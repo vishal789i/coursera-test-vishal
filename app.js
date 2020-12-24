@@ -1,32 +1,89 @@
 (function () {
     'use strict';
     
-    angular.module('LunchCheck', [])
-    .controller('LunchCheckController', LunchCheckController);
-    
-    LunchCheckController.$inject = ['$scope'];
-    function LunchCheckController($scope) {
-      
-      $scope.lunchMenu = "";
-      $scope.message = "";
+    angular.module('ShoppingListCheckOff', [])
+    .controller('ToBuyController', ToBuyController)
+    .controller('AlreadyBoughtController', AlreadyBoughtController)
+    .service('ShoppingListCheckOffService', ShoppingListCheckOffService);
 
-      var checkMenu = function (string) {
-        var message = "";
-        if (string.length == 0) {
-          return "Please enter data first";
-        }else {
-          var res = string.split(",");;
-          var numberOfItems = res.length;
-          if(numberOfItems > 0 && numberOfItems <= 3 ) {
-            message="Enjoy!";
-          } else if (numberOfItems > 3) {
-            message="Too much!";
-          }
-          return message;
+    ToBuyController.$inject = ['ShoppingListCheckOffService'];
+    function ToBuyController(ShoppingListCheckOffService) {
+        
+        var toBuy = this;
+        toBuy.toBuyList = ShoppingListCheckOffService.getToBuyList();
+        toBuy.movetoAlreadyBoughtList = function (ItemIndex) {
+          ShoppingListCheckOffService.movetoAlreadyBoughtList(ItemIndex);
+
         }
-      }
-      $scope.displayMessage = function() {
-        $scope.message = checkMenu($scope.lunchMenu);
-      };
+        toBuy.isEmpty = function() {
+          if(ShoppingListCheckOffService.counter == 0) {
+            return true;
+          }
+          return false;
+        }
+    }
+
+
+    AlreadyBoughtController.$inject = ['ShoppingListCheckOffService'];
+    function AlreadyBoughtController(ShoppingListCheckOffService) {
+        var alreadyBought = this;
+
+        alreadyBought.boughtList = ShoppingListCheckOffService.getBoughtList();
+        
+        alreadyBought.isEmpty = function() {
+          if(ShoppingListCheckOffService.counter == 5) {
+            return true;
+          }
+          return false;
+        }
+        
+    }
+
+
+    function ShoppingListCheckOffService() {
+        var service = this;
+
+        var toBuyList = [
+            {
+              name: "Milk",
+              quantity: "2"
+            },
+            {
+              name: "Donuts",
+              quantity: "200"
+            },
+            {
+              name: "Cookies",
+              quantity: "300"
+            },
+            {
+              name: "Chocolate",
+              quantity: "5"
+            },
+            {
+              name: "Coconut",
+              quantity: "5"
+            }
+        ];
+
+        var boughtList = [];
+        service.counter = toBuyList.length;
+
+        service.movetoAlreadyBoughtList = function(ItemIndex) {
+          
+          boughtList.push(toBuyList[ItemIndex]);
+          toBuyList.splice(ItemIndex, 1);
+          service.counter = service.counter - 1;
+        }
+
+        service.getToBuyList = function () {
+          return toBuyList;
+        };
+
+        service.getBoughtList = function() {
+          return boughtList;
+        }
+
+        service.boughtListLength = boughtList.length;
     }
 })();
