@@ -1,89 +1,72 @@
 (function () {
-    'use strict';
-    
-    angular.module('ShoppingListCheckOff', [])
-    .controller('ToBuyController', ToBuyController)
-    .controller('AlreadyBoughtController', AlreadyBoughtController)
-    .service('ShoppingListCheckOffService', ShoppingListCheckOffService);
+'use strict';
 
-    ToBuyController.$inject = ['ShoppingListCheckOffService'];
-    function ToBuyController(ShoppingListCheckOffService) {
-        
-        var toBuy = this;
-        toBuy.toBuyList = ShoppingListCheckOffService.getToBuyList();
-        toBuy.movetoAlreadyBoughtList = function (ItemIndex) {
-          ShoppingListCheckOffService.movetoAlreadyBoughtList(ItemIndex);
+angular.module('NarrowItDownApp', [])
+.controller('NarrowItDownController', NarrowItDownController)
+.service('MenuSearchService', MenuSearchService)
+.directive('foundItems', FoundItemsDirective);
 
-        }
-        toBuy.isEmpty = function() {
-          if(ShoppingListCheckOffService.counter == 0) {
-            return true;
-          }
-          return false;
-        }
-    }
+NarrowItDownController.inject = ['MenuSearchService'];
+function NarrowItDownController(MenuSearchService) {
+  var narrowItDown = this;
 
+  narrowItDown.found = [];
+  narrowItDown.searchError = false;
 
-    AlreadyBoughtController.$inject = ['ShoppingListCheckOffService'];
-    function AlreadyBoughtController(ShoppingListCheckOffService) {
-        var alreadyBought = this;
-
-        alreadyBought.boughtList = ShoppingListCheckOffService.getBoughtList();
-        
-        alreadyBought.isEmpty = function() {
-          if(ShoppingListCheckOffService.counter == 5) {
-            return true;
-          }
-          return false;
-        }
-        
-    }
-
-
-    function ShoppingListCheckOffService() {
-        var service = this;
-
-        var toBuyList = [
-            {
-              name: "Milk",
-              quantity: "2"
-            },
-            {
-              name: "Donuts",
-              quantity: "200"
-            },
-            {
-              name: "Cookies",
-              quantity: "300"
-            },
-            {
-              name: "Chocolate",
-              quantity: "5"
-            },
-            {
-              name: "Coconut",
-              quantity: "5"
-            }
-        ];
-
-        var boughtList = [];
-        service.counter = toBuyList.length;
-
-        service.movetoAlreadyBoughtList = function(ItemIndex) {
+  narrowItDown.search = function () {
+      if (narrowItDown.searchTerm != null && narrowItDown.searchTerm != '') {
+          narrowItDown.searchError = false; // it's a valid search, so do not display error message
           
-          boughtList.push(toBuyList[ItemIndex]);
-          toBuyList.splice(ItemIndex, 1);
-          service.counter = service.counter - 1;
+          MenuSearchService.getMatchedMenuItems(narrowItDown.searchTerm)
+                           .then(function (foundItems) {
+              narrowItDown.found = foundItems;
+
+              if (narrowItDown.found.length == 0)
+                narrowItDown.searchError = true;
+          });
+      } else { // invalid search
+        narrowItDown.found.length = 0; // clear array
+        narrowItDown.searchError = true;
+      }
+  };
+
+  narrowItDown.removeItem = function (itemIndex) {
+    narrowItDown.found.splice(itemIndex, 1);
+  };
+}
+
+MenuSearchService.inject = ['$http'];
+function MenuSearchService($http) {
+  var menuSearchService = this;
+
+  menuSearchService.getMatchedMenuItems = function (searchTerm) {
+    return $http({url: 'https://davids-restaurant.herokuapp.com/menu_items.json'}).then(function (result) {
+        // process result and only keep items that match
+        var foundItems = result.data.menu_items;
+
+        for (var i = 0; i < foundItems.length; i++) {
+          // if this item does not contain search term
+          if (foundItems[i].description.toLowerCase().indexOf(searchTerm.toLowerCase()) === -1) {
+            foundItems.splice(i, 1); // remove it from foundItems
+            i--; // go back 1 index
+          }
         }
 
-        service.getToBuyList = function () {
-          return toBuyList;
-        };
+        // return processed items
+        return foundItems;
+    });
+  };
+}
 
-        service.getBoughtList = function() {
-          return boughtList;
-        }
-
-        service.boughtListLength = boughtList.length;
+function FoundItemsDirective() {
+  var ddo = {
+    templateUrl: 'foundItems.html',
+    scope: {
+      found: '<',
+      onRemove: '&'
     }
+  };
+
+  return ddo;
+}
 })();
